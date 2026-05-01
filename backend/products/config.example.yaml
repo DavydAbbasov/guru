@@ -9,10 +9,18 @@ server:
 database:
   host: "localhost"
   port: 5432
-  user: "postgres"
+  user: "products"
   # Override with CFG_DATABASE_PASS env var — viper does not expand ${...}.
   pass: ""
   name: "products"
+
+outbox:
+  batchSize: 100
+  pollInterval: "1s"
+  cleanupInterval: "1h"
+  retention: "24h"
+  maxAttempts: 10
+  retryBaseDelay: "5s"
 
 kafka:
   brokers:

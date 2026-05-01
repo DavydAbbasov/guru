@@ -40,7 +40,8 @@ func (tm *TransactionManager) WithTransaction(ctx context.Context, fn func(tx *g
 		return err
 	}
 
-	commitCtx, cancel := context.WithTimeout(ctx, tm.commitTimeout)
+	// commit must finish even if the caller's ctx was cancelled mid-tx; otherwise the open tx leaks.
+	commitCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), tm.commitTimeout)
 	defer cancel()
 
 	if err := tx.WithContext(commitCtx).Commit().Error; err != nil {

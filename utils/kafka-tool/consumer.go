@@ -103,7 +103,6 @@ func (h *consumerHandler) Cleanup(_ sarama.ConsumerGroupSession) error { return 
 
 func (h *consumerHandler) ConsumeClaim(session sarama.ConsumerGroupSession, claim sarama.ConsumerGroupClaim) error {
 	for msg := range claim.Messages() {
-		// recover so a handler panic doesn't kill the consume goroutine and orphan the group
 		func() {
 			defer func() {
 				if r := recover(); r != nil {
@@ -129,7 +128,7 @@ func (h *consumerHandler) ConsumeClaim(session sarama.ConsumerGroupSession, clai
 						zap.Error(err),
 					)
 				}
-				// TODO: route to dead-letter topic; mark+commit below avoids a poison-message redelivery loop
+				return
 			}
 			session.MarkMessage(msg, "")
 			session.Commit()

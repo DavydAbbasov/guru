@@ -17,5 +17,11 @@ var Module = fx.Module("config",
 			}
 			return cfg.Profiling
 		},
+		func(cfg *Config) *OutboxConfig {
+			if cfg.Outbox == nil {
+				return &OutboxConfig{}
+			}
+			return cfg.Outbox
+		},
 	),
 )

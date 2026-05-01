@@ -24,7 +24,7 @@ const (
 	fallbackReadTimeout  = 10 * time.Second
 	fallbackWriteTimeout = 10 * time.Second
 	fallbackIdleTimeout  = 30 * time.Second
-	fallbackBodyLimit    = 4 * 1024 * 1024 // 4 MiB
+	fallbackBodyLimit    = 4 * 1024 * 1024
 )
 
 type Server struct {

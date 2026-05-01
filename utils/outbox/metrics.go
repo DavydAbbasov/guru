@@ -6,6 +6,7 @@ type Metrics struct {
 	Pending          prometheus.Gauge
 	Dispatched       *prometheus.CounterVec
 	DispatchFailures *prometheus.CounterVec
+	Abandoned        *prometheus.CounterVec
 	DispatchDuration prometheus.Histogram
 	CleanupDeleted   prometheus.Counter
 }
@@ -30,6 +31,12 @@ func NewMetrics(registry *prometheus.Registry, namespace string) *Metrics {
 			Name:      "dispatch_failures_total",
 			Help:      "Outbox publish failures (will retry until MaxAttempts)",
 		}, []string{"event_type"}),
+		Abandoned: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Namespace: namespace,
+			Subsystem: "outbox",
+			Name:      "abandoned_total",
+			Help:      "Outbox rows parked after MaxAttempts (operator action required)",
+		}, []string{"event_type"}),
 		DispatchDuration: prometheus.NewHistogram(prometheus.HistogramOpts{
 			Namespace: namespace,
 			Subsystem: "outbox",
@@ -48,6 +55,7 @@ func NewMetrics(registry *prometheus.Registry, namespace string) *Metrics {
 		m.Pending,
 		m.Dispatched,
 		m.DispatchFailures,
+		m.Abandoned,
 		m.DispatchDuration,
 		m.CleanupDeleted,
 	)

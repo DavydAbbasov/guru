@@ -110,13 +110,13 @@ Each service reads `config.yaml` from its working dir. In compose it's mounted f
 
 Any key can be overridden via env: `CFG_<UPPER_DOTTED_KEY>`, e.g. `database.host` → `CFG_DATABASE_HOST`.
 
-**Secrets** come from env, not YAML — viper does not expand `${...}` in the config file. The example configs ship with `pass: ""` and rely on the env override:
+**Secrets.** No setup needed for `make up` — dev defaults live in `devops/local/etc/*.yaml` and the matching `POSTGRES_PASSWORD` is set in compose. Env-based secrets only matter when running on the host or in production:
 
 ```sh
 CFG_DATABASE_PASS=secret make run-products
 ```
 
-For the docker compose stack, dev defaults live in `devops/local/etc/*.yaml`. In production, set `CFG_DATABASE_PASS` (and any other secret) via the orchestrator's secret store and reference it in `environment:` — never check real secrets into YAML.
+In production, inject `CFG_DATABASE_PASS` (and any other secret) via the orchestrator's secret store and reference it through `environment:` — never check real secrets into YAML. Viper does not expand `${...}` in the config file, so env override is the only path.
 
 ## Design notes
 

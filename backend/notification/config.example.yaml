@@ -5,8 +5,9 @@ server:
 database:
   host: "localhost"
   port: 5432
-  user: "postgres"
-  pass: "postgres"
+  user: "notification"
+  # Override with CFG_DATABASE_PASS env var — viper does not expand ${...}.
+  pass: ""
   name: "notification"
 
 kafka:

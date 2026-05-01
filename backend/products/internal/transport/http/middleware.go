@@ -16,7 +16,6 @@ const requestIDHeader = "X-Request-ID"
 
 const requestIDLocalKey = "request_id"
 
-// requestIDMiddleware honours an inbound X-Request-ID or mints a UUIDv4.
 func requestIDMiddleware() fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		rid := c.Get(requestIDHeader)
@@ -56,7 +55,6 @@ func loggingMiddleware(log logger.Logger) fiber.Handler {
 	}
 }
 
-// recoverMiddleware logs the panic value, stack, and request coordinates structurally.
 func recoverMiddleware(log logger.Logger) fiber.Handler {
 	return recover.New(recover.Config{
 		EnableStackTrace: true,

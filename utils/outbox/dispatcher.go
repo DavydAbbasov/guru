@@ -7,6 +7,9 @@ import (
 	"strconv"
 	"time"
 
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -70,7 +73,8 @@ func (d *Dispatcher) Run(ctx context.Context) {
 }
 
 func (d *Dispatcher) dispatch(ctx context.Context) {
-	ctx, span := d.tracer.Start(ctx, "outbox.Dispatcher.dispatch")
+	ctx, span := d.tracer.Start(ctx, "outbox.Dispatcher.dispatch",
+		trace.WithSpanKind(trace.SpanKindInternal))
 	defer span.End()
 
 	start := time.Now()
@@ -106,8 +110,21 @@ func (d *Dispatcher) publishOne(ctx context.Context, tx *gorm.DB, ev *Event) {
 		zap.String("event_type", ev.EventType),
 		zap.Int("attempts", ev.Attempts),
 	)
+	ctx, span := d.tracer.Start(ctx, "outbox.Dispatcher.publish",
+		trace.WithSpanKind(trace.SpanKindProducer),
+		trace.WithAttributes(
+			attribute.String("messaging.system", "kafka"),
+			attribute.String("messaging.operation", "publish"),
+			attribute.String("messaging.kafka.message_key", ev.AggregateID.String()),
+			attribute.String("outbox.event_id", ev.ID.String()),
+			attribute.String("outbox.event_type", ev.EventType),
+			attribute.Int("outbox.attempts", ev.Attempts),
+		))
+	defer span.End()
 	headers := map[string]string{"outbox-event-id": ev.ID.String()}
 	if err := d.publisher.Publish(ctx, ev.AggregateID.String(), ev.Payload, headers); err != nil {
+		span.RecordError(err)
+		span.SetStatus(codes.Error, "publish failed")
 		ev.Attempts++
 		errStr := err.Error()
 		ev.LastError = &errStr
@@ -122,6 +139,7 @@ func (d *Dispatcher) publishOne(ctx context.Context, tx *gorm.DB, ev *Event) {
 		if ev.Attempts >= d.cfg.MaxAttempts {
 			now := time.Now()
 			updates["sent_at"] = now // park: stop retrying; surface via metrics + log
+			d.metrics.Abandoned.WithLabelValues(ev.EventType).Inc()
 			log.Error("outbox event abandoned after max attempts",
 				zap.Error(err),
 				zap.Int("max_attempts", d.cfg.MaxAttempts))

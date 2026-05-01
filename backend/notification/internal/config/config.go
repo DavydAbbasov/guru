@@ -68,7 +68,6 @@ func New() (*Config, error) {
 	v.SetDefault("tracer.disabled", true)
 	v.SetDefault("metrics.namespace", "notification")
 
-	// CFG_KAFKA_BROKERS → kafka.brokers
 	v.SetEnvPrefix("CFG")
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	v.AutomaticEnv()

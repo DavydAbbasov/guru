@@ -36,26 +36,15 @@ func (r *ProductRepository) Delete(ctx context.Context, tx *gorm.DB, id uuid.UUI
 	var product entities.Product
 	db := r.pickDB(tx).WithContext(ctx)
 
-	run := func(tx *gorm.DB) error {
-		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
-			Where("id = ?", id).
-			First(&product).Error; err != nil {
-			return err
+	if err := db.Clauses(clause.Locking{Strength: "UPDATE"}).
+		Where("id = ?", id).
+		First(&product).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, repository.ErrNotFound
 		}
-		return tx.Delete(&product).Error
+		return nil, err
 	}
-
-	var err error
-	if tx != nil {
-		err = run(db)
-	} else {
-		err = db.Transaction(run)
-	}
-
-	if errors.Is(err, gorm.ErrRecordNotFound) {
-		return nil, repository.ErrNotFound
-	}
-	if err != nil {
+	if err := db.Delete(&product).Error; err != nil {
 		return nil, err
 	}
 	return &product, nil

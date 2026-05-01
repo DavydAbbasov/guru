@@ -44,6 +44,8 @@ func Build() *fx.App {
 		kafkatransport.Module,
 		httptransport.Module,
 		profiling.Module,
+
+		fx.Invoke(pgsql.RegisterMetrics),
 	)
 }
 

@@ -86,8 +86,16 @@ func adaptKafkaConfig(cfg *config.KafkaConfig) *kafkatool.Config {
 	}
 }
 
-func adaptOutboxConfig(mcfg *config.MetricsConfig) outbox.Config {
-	return outbox.Config{Namespace: mcfg.Namespace}
+func adaptOutboxConfig(mcfg *config.MetricsConfig, ocfg *config.OutboxConfig) outbox.Config {
+	return outbox.Config{
+		Namespace:       mcfg.Namespace,
+		BatchSize:       ocfg.BatchSize,
+		PollInterval:    ocfg.PollInterval,
+		CleanupInterval: ocfg.CleanupInterval,
+		Retention:       ocfg.Retention,
+		MaxAttempts:     ocfg.MaxAttempts,
+		RetryBaseDelay:  ocfg.RetryBaseDelay,
+	}
 }
 
 func adaptPrometheusRegistry(m *metrics.Metrics) *prometheus.Registry {

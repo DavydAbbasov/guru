@@ -5,8 +5,8 @@ server:
 database:
   host: "postgres"
   port: 5432
-  user: "postgres"
-  pass: "postgres"
+  user: "notification"
+  pass: "notification"
   name: "notification"
 
 kafka:

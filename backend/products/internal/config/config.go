@@ -19,6 +19,16 @@ type Config struct {
 	Tracer    *TracerConfig    `mapstructure:"tracer"`
 	Metrics   *MetricsConfig   `mapstructure:"metrics"`
 	Profiling *ProfilingConfig `mapstructure:"profiling"`
+	Outbox    *OutboxConfig    `mapstructure:"outbox"`
+}
+
+type OutboxConfig struct {
+	BatchSize       int           `mapstructure:"batchSize"`
+	PollInterval    time.Duration `mapstructure:"pollInterval"`
+	CleanupInterval time.Duration `mapstructure:"cleanupInterval"`
+	Retention       time.Duration `mapstructure:"retention"`
+	MaxAttempts     int           `mapstructure:"maxAttempts"`
+	RetryBaseDelay  time.Duration `mapstructure:"retryBaseDelay"`
 }
 
 type ProfilingConfig struct {
@@ -71,7 +81,7 @@ func New() (*Config, error) {
 	v.SetDefault("server.readTimeout", "10s")
 	v.SetDefault("server.writeTimeout", "10s")
 	v.SetDefault("server.idleTimeout", "30s")
-	v.SetDefault("server.bodyLimit", 4*1024*1024) // 4 MiB
+	v.SetDefault("server.bodyLimit", 4*1024*1024)
 	v.SetDefault("logger.level", "info")
 	v.SetDefault("tracer.disabled", true)
 	v.SetDefault("metrics.namespace", "products")

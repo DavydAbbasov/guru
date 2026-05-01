@@ -3,7 +3,7 @@ package metrics
 import "go.uber.org/fx"
 
 type Config struct {
-	Namespace string // Prometheus metric namespace prefix
+	Namespace string
 }
 
 func NewFromConfig(cfg *Config) *Metrics {

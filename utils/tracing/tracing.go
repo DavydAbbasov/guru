@@ -15,7 +15,7 @@ import (
 
 type Config struct {
 	Disabled       bool   // uses isolated noop provider so external SetTracerProvider can't override
-	Endpoint       string // OTLP/HTTP collector endpoint (host:port)
+	Endpoint       string
 	ServiceName    string
 	ServiceVersion string
 	SamplerRatio   float64 // TraceIDRatioBased fraction; 0 means 1.0 (sample all)
@@ -28,7 +28,6 @@ type Tracer struct {
 	Disabled bool
 }
 
-// New returns a Tracer; when cfg.Disabled, the noop provider is isolated (not registered globally).
 func New(cfg *Config) (*Tracer, error) {
 	if cfg.Disabled {
 		return &Tracer{

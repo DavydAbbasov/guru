@@ -12,6 +12,9 @@ import (
 )
 
 func buildProductEventPayload(product *entities.Product, eventType eventsv1.EventType) ([]byte, error) {
+	if product == nil {
+		return nil, fmt.Errorf("nil product")
+	}
 	event := &eventsv1.ProductEvent{
 		Id:         product.ID.String(),
 		Name:       product.Name,

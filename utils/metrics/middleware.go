@@ -9,7 +9,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
-// unmatchedRoute keeps Prometheus label cardinality bounded for unmatched requests.
 const unmatchedRoute = "unmatched"
 
 func (m *Metrics) FiberMiddleware() fiber.Handler {
@@ -43,7 +42,6 @@ func routeLabel(c *fiber.Ctx, status int) string {
 	if path == "" {
 		return unmatchedRoute
 	}
-	// Fiber's catch-all not-found handler reports "/" as the route path
 	if path == "/" && status == fiber.StatusNotFound {
 		return unmatchedRoute
 	}
@@ -51,5 +49,8 @@ func routeLabel(c *fiber.Ctx, status int) string {
 }
 
 func PrometheusHandler(m *Metrics) fiber.Handler {
-	return adaptor.HTTPHandler(promhttp.HandlerFor(m.Registry, promhttp.HandlerOpts{}))
+	return adaptor.HTTPHandler(promhttp.HandlerFor(m.Registry, promhttp.HandlerOpts{
+		EnableOpenMetrics: false,
+		ErrorHandling:     promhttp.ContinueOnError,
+	}))
 }

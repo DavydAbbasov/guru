@@ -4,8 +4,6 @@
 .vscode
 .DS_Store
 bin/
-docs/
-backend/*/docs/
 backend/*/config.yaml
 *.test
 *.out

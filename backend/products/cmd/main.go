@@ -1,6 +1,10 @@
 package main
 
-import "guru/backend/products/internal/container"
+import (
+	"guru/backend/products/internal/container"
+
+	_ "guru/backend/products/docs"
+)
 
 // @title			Products API
 // @version		1.0

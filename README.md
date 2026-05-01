@@ -106,9 +106,17 @@ Per-service metric names use the service namespace (`products_*` / `notification
 
 ## Configuration
 
-Each service reads `config.yaml` from its working dir. In compose it's mounted from `devops/local/etc/{products,notification}.yaml`. For host-side runs, copy `config.example.yaml` → `config.yaml`.
+Each service reads `config.yaml` from its working dir. In compose it's mounted from `devops/local/etc/{products,notification}.yaml`. For host-side runs, copy `config.example.yaml` → `config.yaml` (gitignored).
 
 Any key can be overridden via env: `CFG_<UPPER_DOTTED_KEY>`, e.g. `database.host` → `CFG_DATABASE_HOST`.
+
+**Secrets** come from env, not YAML — viper does not expand `${...}` in the config file. The example configs ship with `pass: ""` and rely on the env override:
+
+```sh
+CFG_DATABASE_PASS=secret make run-products
+```
+
+For the docker compose stack, dev defaults live in `devops/local/etc/*.yaml`. In production, set `CFG_DATABASE_PASS` (and any other secret) via the orchestrator's secret store and reference it in `environment:` — never check real secrets into YAML.
 
 ## Design notes
 

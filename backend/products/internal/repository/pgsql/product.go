@@ -21,21 +21,37 @@ func NewProductRepository(db *gorm.DB) *ProductRepository {
 	return &ProductRepository{db: db}
 }
 
-func (r *ProductRepository) Create(ctx context.Context, product *entities.Product) error {
-	return r.db.WithContext(ctx).Create(product).Error
+func (r *ProductRepository) pickDB(tx *gorm.DB) *gorm.DB {
+	if tx != nil {
+		return tx
+	}
+	return r.db
 }
 
-func (r *ProductRepository) Delete(ctx context.Context, id uuid.UUID) (*entities.Product, error) {
+func (r *ProductRepository) Create(ctx context.Context, tx *gorm.DB, product *entities.Product) error {
+	return r.pickDB(tx).WithContext(ctx).Create(product).Error
+}
+
+func (r *ProductRepository) Delete(ctx context.Context, tx *gorm.DB, id uuid.UUID) (*entities.Product, error) {
 	var product entities.Product
-	err := r.db.WithContext(ctx).
-		Transaction(func(tx *gorm.DB) error {
-			if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
-				Where("id = ?", id).
-				First(&product).Error; err != nil {
-				return err
-			}
-			return tx.Delete(&product).Error
-		})
+	db := r.pickDB(tx).WithContext(ctx)
+
+	run := func(tx *gorm.DB) error {
+		if err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+			Where("id = ?", id).
+			First(&product).Error; err != nil {
+			return err
+		}
+		return tx.Delete(&product).Error
+	}
+
+	var err error
+	if tx != nil {
+		err = run(db)
+	} else {
+		err = db.Transaction(run)
+	}
+
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, repository.ErrNotFound
 	}

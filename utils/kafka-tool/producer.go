@@ -48,11 +48,15 @@ func NewProducer(cfg *Config, log logger.Logger) (*Producer, error) {
 	}, nil
 }
 
-func (p *Producer) SendMessage(ctx context.Context, key string, value []byte) (partition int32, offset int64, err error) {
+func (p *Producer) SendMessage(ctx context.Context, key string, value []byte, headers map[string]string) (partition int32, offset int64, err error) {
 	msg := &sarama.ProducerMessage{
 		Topic: p.topic,
 		Key:   sarama.StringEncoder(key),
 		Value: sarama.ByteEncoder(value),
+	}
+
+	for k, v := range headers {
+		msg.Headers = append(msg.Headers, sarama.RecordHeader{Key: []byte(k), Value: []byte(v)})
 	}
 
 	otel.GetTextMapPropagator().Inject(ctx, producerMessageCarrier{msg: msg})

@@ -92,7 +92,6 @@ func (t *Tracer) Start(ctx context.Context, spanName string, opts ...trace.SpanS
 	return t.tracer.Start(ctx, spanName, opts...)
 }
 
-// Shutdown flushes pending spans; pass a context with a deadline to bound flush time.
 func (t *Tracer) Shutdown(ctx context.Context) error {
 	if t.provider != nil {
 		return t.provider.Shutdown(ctx)

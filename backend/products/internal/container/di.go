@@ -3,16 +3,19 @@ package container
 import (
 	"guru/backend/products/internal/config"
 	productsmetrics "guru/backend/products/internal/metrics"
-	"guru/backend/products/internal/publisher"
 	pgsqlrepo "guru/backend/products/internal/repository/pgsql"
 	"guru/backend/products/internal/service"
 	httptransport "guru/backend/products/internal/transport/http"
+	productspgsql "guru/backend/products/pkg/pgsql"
 	kafkatool "guru/utils/kafka-tool"
 	"guru/utils/logger"
 	"guru/utils/metrics"
+	"guru/utils/outbox"
 	"guru/utils/pgsql"
+	"guru/utils/profiling"
 	"guru/utils/tracing"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/fx"
 )
 
@@ -25,20 +28,24 @@ func Build() *fx.App {
 			adaptMetricsConfig,
 			adaptDBConfig,
 			adaptKafkaConfig,
+			adaptProfilingConfig,
+			adaptOutboxConfig,
+			adaptPrometheusRegistry,
 		),
 
 		logger.Module,
 		tracing.Module,
 		metrics.Module,
-		pgsql.Module,
+		productspgsql.Module,
 		kafkatool.ProducerModule,
 
 		productsmetrics.Module,
 		pgsqlrepo.Module,
-		publisher.Module,
+		outbox.Module,
 		service.Module,
 
 		httptransport.Module,
+		profiling.Module,
 
 		fx.Invoke(pgsql.RegisterMetrics),
 	)
@@ -76,5 +83,26 @@ func adaptKafkaConfig(cfg *config.KafkaConfig) *kafkatool.Config {
 		Brokers:  cfg.Brokers,
 		Topic:    cfg.Topic,
 		ClientID: "products-service",
+	}
+}
+
+func adaptOutboxConfig(mcfg *config.MetricsConfig) outbox.Config {
+	return outbox.Config{Namespace: mcfg.Namespace}
+}
+
+func adaptPrometheusRegistry(m *metrics.Metrics) *prometheus.Registry {
+	return m.Registry
+}
+
+func adaptProfilingConfig(cfg *config.ProfilingConfig, tcfg *config.TracerConfig) *profiling.Config {
+	path := cfg.Path
+	if path == "" {
+		path = "/var/log/goprofile"
+	}
+	return &profiling.Config{
+		CPU:         cfg.CPU,
+		Memory:      cfg.Memory,
+		Path:        path,
+		ServiceName: tcfg.ServiceName,
 	}
 }

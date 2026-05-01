@@ -9,6 +9,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
+	fiberPprof "github.com/gofiber/fiber/v2/middleware/pprof"
 	fiberSwagger "github.com/swaggo/fiber-swagger"
 	"go.uber.org/fx"
 	"go.uber.org/zap"
@@ -66,6 +67,7 @@ func NewServer(p Params) *Server {
 
 	app.Get("/metrics", metrics.PrometheusHandler(p.Metrics))
 	app.Get("/docs/swagger/*", fiberSwagger.WrapHandler)
+	app.Use(fiberPprof.New()) // mounts /debug/pprof/* — keep behind a private LB in prod
 
 	api := app.Group("/api/v1")
 	for _, h := range p.Handlers {

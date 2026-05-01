@@ -12,12 +12,19 @@ import (
 )
 
 type Config struct {
-	Server   *ServerConfig   `mapstructure:"server"   validate:"required"`
-	Database *DatabaseConfig `mapstructure:"database" validate:"required"`
-	Kafka    *KafkaConfig    `mapstructure:"kafka"    validate:"required"`
-	Logger   *LoggerConfig   `mapstructure:"logger"`
-	Tracer   *TracerConfig   `mapstructure:"tracer"`
-	Metrics  *MetricsConfig  `mapstructure:"metrics"`
+	Server    *ServerConfig    `mapstructure:"server"   validate:"required"`
+	Database  *DatabaseConfig  `mapstructure:"database" validate:"required"`
+	Kafka     *KafkaConfig     `mapstructure:"kafka"    validate:"required"`
+	Logger    *LoggerConfig    `mapstructure:"logger"`
+	Tracer    *TracerConfig    `mapstructure:"tracer"`
+	Metrics   *MetricsConfig   `mapstructure:"metrics"`
+	Profiling *ProfilingConfig `mapstructure:"profiling"`
+}
+
+type ProfilingConfig struct {
+	CPU    bool   `mapstructure:"cpu"`
+	Memory bool   `mapstructure:"memory"`
+	Path   string `mapstructure:"path"`
 }
 
 type ServerConfig struct {

@@ -7,6 +7,7 @@ import (
 	"net"
 
 	"github.com/gofiber/fiber/v2"
+	fiberPprof "github.com/gofiber/fiber/v2/middleware/pprof"
 	"go.uber.org/fx"
 	"go.uber.org/zap"
 
@@ -37,6 +38,7 @@ func NewServer(
 		return c.JSON(fiber.Map{"status": "ready"})
 	})
 	app.Get("/metrics", metrics.PrometheusHandler(m))
+	app.Use(fiberPprof.New())
 
 	return &Server{
 		app:        app,

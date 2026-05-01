@@ -17,6 +17,8 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+const outboxEventIDHeader = "outbox-event-id"
+
 type ConsumerHandler struct {
 	service *service.NotificationService
 	metrics *notificationmetrics.Metrics
@@ -72,5 +74,19 @@ func (h *ConsumerHandler) Handle(ctx context.Context, msg *sarama.ConsumerMessag
 		OccurredAt: pe.GetOccurredAt().AsTime(),
 	}
 
-	return h.service.Process(ctx, event)
+	eventID := headerValue(msg.Headers, outboxEventIDHeader)
+	if eventID == "" {
+		log.Warn("kafka message without outbox-event-id header; dedup skipped")
+	}
+
+	return h.service.Process(ctx, event, eventID)
+}
+
+func headerValue(headers []*sarama.RecordHeader, key string) string {
+	for _, h := range headers {
+		if string(h.Key) == key {
+			return string(h.Value)
+		}
+	}
+	return ""
 }

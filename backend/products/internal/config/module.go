@@ -11,5 +11,11 @@ var Module = fx.Module("config",
 		func(cfg *Config) *LoggerConfig   { return cfg.Logger },
 		func(cfg *Config) *TracerConfig   { return cfg.Tracer },
 		func(cfg *Config) *MetricsConfig  { return cfg.Metrics },
+		func(cfg *Config) *ProfilingConfig {
+			if cfg.Profiling == nil {
+				return &ProfilingConfig{}
+			}
+			return cfg.Profiling
+		},
 	),
 )

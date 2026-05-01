@@ -9,38 +9,50 @@ import (
 
 	"github.com/google/uuid"
 	"go.uber.org/zap"
+	"gorm.io/gorm"
 
 	eventsv1 "guru/apis/products/v1/events"
 	"guru/backend/products/internal/entities"
 	productsmetrics "guru/backend/products/internal/metrics"
-	"guru/backend/products/internal/publisher"
 	"guru/backend/products/internal/repository"
 	customerrors "guru/utils/custom-errors"
 	"guru/utils/logger"
+	"guru/utils/outbox"
 	"guru/utils/tracing"
 )
 
+type OutboxSaver interface {
+	Save(ctx context.Context, tx *gorm.DB, p outbox.SaveParams) error
+}
+
+type TxManager interface {
+	WithTransaction(ctx context.Context, fn func(tx *gorm.DB) error) error
+}
+
 type ProductService struct {
-	repo      repository.ProductRepository
-	publisher publisher.EventPublisher
-	tracer    *tracing.Tracer
-	metrics   *productsmetrics.Metrics
-	log       logger.Logger
+	repo    repository.ProductRepository
+	outbox  OutboxSaver
+	txMgr   TxManager
+	tracer  *tracing.Tracer
+	metrics *productsmetrics.Metrics
+	log     logger.Logger
 }
 
 func NewProductService(
 	repo repository.ProductRepository,
-	pub publisher.EventPublisher,
+	outboxSaver OutboxSaver,
+	txMgr TxManager,
 	tracer *tracing.Tracer,
 	m *productsmetrics.Metrics,
 	log logger.Logger,
 ) *ProductService {
 	return &ProductService{
-		repo:      repo,
-		publisher: pub,
-		tracer:    tracer,
-		metrics:   m,
-		log:       log,
+		repo:    repo,
+		outbox:  outboxSaver,
+		txMgr:   txMgr,
+		tracer:  tracer,
+		metrics: m,
+		log:     log,
 	}
 }
 
@@ -60,20 +72,17 @@ func (s *ProductService) Create(ctx context.Context, name string) (*entities.Pro
 		CreatedAt: time.Now(),
 	}
 
-	if err := s.repo.Create(ctx, product); err != nil {
+	if err := s.txMgr.WithTransaction(ctx, func(tx *gorm.DB) error {
+		if err := s.repo.Create(ctx, tx, product); err != nil {
+			return err
+		}
+		return s.saveOutbox(ctx, tx, product, eventsv1.EventType_EVENT_TYPE_CREATED)
+	}); err != nil {
 		return nil, s.mapRepoError(ctx, "failed to create product", err)
 	}
 
 	s.metrics.Created.Inc()
 	s.metrics.Active.Inc()
-
-	if err := s.publisher.PublishProductEvent(
-		ctx,
-		product,
-		eventsv1.EventType_EVENT_TYPE_CREATED); err != nil {
-		log.Error("failed to publish product created event",
-			zap.Error(err))
-	}
 
 	log.Info("product created",
 		zap.String("id", product.ID.String()),
@@ -87,24 +96,23 @@ func (s *ProductService) Delete(ctx context.Context, id uuid.UUID) error {
 
 	log := logger.FromContext(ctx, s.log)
 
-	product, err := s.repo.Delete(ctx, id)
-	if err != nil {
+	var deleted *entities.Product
+	if err := s.txMgr.WithTransaction(ctx, func(tx *gorm.DB) error {
+		p, err := s.repo.Delete(ctx, tx, id)
+		if err != nil {
+			return err
+		}
+		deleted = p
+		return s.saveOutbox(ctx, tx, p, eventsv1.EventType_EVENT_TYPE_DELETED)
+	}); err != nil {
 		return s.mapRepoError(ctx, "failed to delete product", err)
 	}
 
 	s.metrics.Deleted.Inc()
 	s.metrics.Active.Dec()
 
-	if err := s.publisher.PublishProductEvent(
-		ctx,
-		product,
-		eventsv1.EventType_EVENT_TYPE_DELETED); err != nil {
-		log.Error("failed to publish product deleted event",
-			zap.Error(err))
-	}
-
 	log.Info("product deleted",
-		zap.String("id", id.String()))
+		zap.String("id", deleted.ID.String()))
 	return nil
 }
 
@@ -126,6 +134,18 @@ func (s *ProductService) List(ctx context.Context, page, limit int) ([]entities.
 	}
 
 	return products, total, nil
+}
+
+func (s *ProductService) saveOutbox(ctx context.Context, tx *gorm.DB, product *entities.Product, eventType eventsv1.EventType) error {
+	payload, err := buildProductEventPayload(product, eventType)
+	if err != nil {
+		return err
+	}
+	return s.outbox.Save(ctx, tx, outbox.SaveParams{
+		AggregateID: product.ID,
+		EventType:   eventType.String(),
+		Payload:     payload,
+	})
 }
 
 func (s *ProductService) mapRepoError(ctx context.Context, msg string, err error) error {

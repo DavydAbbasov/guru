@@ -9,6 +9,8 @@ Producer writes the event row to an `outbox` table inside the same transaction a
 
 Full stack (services + Postgres + Kafka + Prometheus/Grafana/Tempo/Loki) starts with one command.
 
+> **Scope.** This project deliberately exercises production-shape patterns end-to-end — transactional outbox, consumer-side idempotency, OTEL across the broker, structured config + validation, full observability stack — rather than the smallest implementation that meets the brief. The goal is to demonstrate the techniques, not minimize line count.
+
 ## Run
 
 ```sh

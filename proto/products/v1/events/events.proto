@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package products.v1.events;
+
+option go_package = "guru/apis/products/v1/events";
+
+import "google/protobuf/timestamp.proto";
+
+enum EventType {
+  EVENT_TYPE_UNSPECIFIED = 0;
+  EVENT_TYPE_CREATED = 1;
+  EVENT_TYPE_DELETED = 2;
+}
+
+message ProductEvent {
+  string id = 1;
+  string name = 2;
+  EventType type = 3;
+  google.protobuf.Timestamp occurred_at = 4;
+}

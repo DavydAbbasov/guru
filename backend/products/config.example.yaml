@@ -1,0 +1,31 @@
+server:
+  host: "0.0.0.0"
+  port: 8080
+  readTimeout: "10s"
+  writeTimeout: "10s"
+  idleTimeout: "30s"
+  bodyLimit: 4194304   # 4 MiB
+
+database:
+  host: "localhost"
+  port: 5432
+  user: "postgres"
+  # Override with CFG_DATABASE_PASS env var — viper does not expand ${...}.
+  pass: ""
+  name: "products"
+
+kafka:
+  brokers:
+    - "localhost:9092"
+  topic: "products-events"
+
+logger:
+  level: "info"
+
+tracer:
+  disabled: true
+  endpoint: "localhost:4318"
+  serviceName: "products"
+
+metrics:
+  namespace: "products"

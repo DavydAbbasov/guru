@@ -1,0 +1,154 @@
+name: guru
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: products
+    ports:
+      - "${POSTGRES_HOST_PORT:-55432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d products"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  kafka:
+    image: apache/kafka:3.8.0
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: controller,broker
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093,EXTERNAL://:9094
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,EXTERNAL://localhost:9094
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
+    ports:
+      - "${KAFKA_HOST_PORT:-9094}:9094"
+    volumes:
+      - kafkadata:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --list >/dev/null 2>&1"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  migrator:
+    build:
+      context: ../..
+      dockerfile: devops/local/apps/builder/Dockerfile
+      args:
+        SERVICE_PATH: cmd/migrator
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASS: postgres
+      DB_NAME: products
+      MIGRATIONS_DIR: /migrations
+    volumes:
+      - ../../backend/products/migrations/pgsql:/migrations:ro
+    command: ["up"]
+
+  products:
+    build:
+      context: ../..
+      dockerfile: devops/local/apps/builder/Dockerfile
+      args:
+        SERVICE_PATH: backend/products/cmd
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      migrator:
+        condition: service_completed_successfully
+    ports:
+      - "${PRODUCTS_HOST_PORT:-8080}:8080"
+    volumes:
+      - ./etc/products.yaml:/app/config.yaml:ro
+
+  notification:
+    build:
+      context: ../..
+      dockerfile: devops/local/apps/builder/Dockerfile
+      args:
+        SERVICE_PATH: backend/notification/cmd
+    depends_on:
+      kafka:
+        condition: service_healthy
+    volumes:
+      - ./etc/notification.yaml:/app/config.yaml:ro
+
+  tempo:
+    image: grafana/tempo:2.6.0
+    command: ["-config.file=/etc/tempo/tempo.yaml"]
+    volumes:
+      - ./etc/infra/tempo.yaml:/etc/tempo/tempo.yaml:ro
+      - tempodata:/var/tempo
+
+  prometheus:
+    image: prom/prometheus:v2.55.0
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --web.enable-remote-write-receiver
+    ports:
+      - "${PROMETHEUS_HOST_PORT:-9090}:9090"
+    volumes:
+      - ./etc/infra/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - promdata:/prometheus
+
+  loki:
+    image: grafana/loki:3.2.0
+    command: ["-config.file=/etc/loki/loki.yaml"]
+    user: "0"
+    volumes:
+      - ./etc/infra/loki.yaml:/etc/loki/loki.yaml:ro
+      - lokidata:/loki
+
+  promtail:
+    image: grafana/promtail:3.2.0
+    command: ["-config.file=/etc/promtail/promtail.yaml"]
+    depends_on:
+      - loki
+    volumes:
+      - ./etc/infra/promtail.yaml:/etc/promtail/promtail.yaml:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+
+  grafana:
+    image: grafana/grafana:11.3.0
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
+      GF_AUTH_DISABLE_LOGIN_FORM: "true"
+    ports:
+      - "${GRAFANA_HOST_PORT:-3000}:3000"
+    volumes:
+      - ./etc/infra/grafana/datasources.yaml:/etc/grafana/provisioning/datasources/datasources.yaml:ro
+      - grafanadata:/var/lib/grafana
+    depends_on:
+      - prometheus
+      - tempo
+      - loki
+
+volumes:
+  pgdata:
+  kafkadata:
+  tempodata:
+  promdata:
+  lokidata:
+  grafanadata:

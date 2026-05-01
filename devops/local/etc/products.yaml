@@ -1,0 +1,30 @@
+server:
+  host: "0.0.0.0"
+  port: 8080
+  readTimeout: "10s"
+  writeTimeout: "10s"
+  idleTimeout: "30s"
+  bodyLimit: 4194304
+
+database:
+  host: "postgres"
+  port: 5432
+  user: "postgres"
+  pass: "postgres"
+  name: "products"
+
+kafka:
+  brokers:
+    - "kafka:9092"
+  topic: "products-events"
+
+logger:
+  level: "info"
+
+tracer:
+  disabled: false
+  endpoint: "tempo:4318"
+  serviceName: "products"
+
+metrics:
+  namespace: "products"

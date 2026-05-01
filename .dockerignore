@@ -1,0 +1,14 @@
+.git
+.github
+.idea
+.vscode
+.DS_Store
+bin/
+docs/
+backend/*/docs/
+backend/*/config.yaml
+*.test
+*.out
+coverage.html
+README.md
+doc/

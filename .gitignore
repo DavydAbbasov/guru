@@ -1,0 +1,27 @@
+# Binaries
+bin/
+*.exe
+
+# Local secrets — actual config (committed: config.example.yaml only)
+backend/*/config.yaml
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# Go
+*.test
+*.out
+coverage.html
+vendor/
+
+# Generated swagger docs (run `swag init` locally / in CI)
+backend/*/docs/
+
+# OS
+.DS_Store
+
+# Internal docs and tooling
+doc/
+.claude/
